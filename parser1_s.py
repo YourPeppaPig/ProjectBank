@@ -6,7 +6,7 @@ import pandas as pd
 import xlrd
 import requests
 
-file_name = '05-02 оборот розничной торговли пищевыми продуктами.xls';
+file_name = '05-01 оборот розничной торговли.xls';
 full_file_name = r'/home/ubuntu/ProjectBank/' + file_name
 
 message = "Загрузка файла '{0}' завершена успешно ".format(file_name);
@@ -25,10 +25,10 @@ cursor = connection.cursor()
 
 xls = xlrd.open_workbook(full_file_name, on_demand=True)
 sheets = xls.sheet_names()
-codes = ['оборот_розничной_торговли_пищевыми_продуктами_млн',
-         'оборот_розничной_торговли_пищевыми_продуктами_%_соотв_месяц',
-         'оборот_розничной_торговли_пищевыми_продуктами_млн_соотв_период',
-         'оборот_розничной_торговли_пищевыми_продуктами_%_пред_месяц']
+codes = ['оборот_розничной_торговли_млн',
+         'оборот_розничной_торговли_%_соотв_месяц',
+         'оборот_розничной_торговли_млн_соотв_период',
+         'оборот_розничной_торговли_%_пред_месяц']
 
 command = "INSERT INTO data.incoming_files (filename, uploaded_date , status) VALUES ('{0}', current_timestamp, false) RETURNING ID".format(file_name);
 cursor.execute(command);
@@ -57,7 +57,6 @@ def parsing_sheet(n):
     # Получение данных
     try:
         wasError = False
-        
         for level in file.columns:
             column_3 = level[2]
             column_4 = level[3]
@@ -84,11 +83,12 @@ def parsing_sheet(n):
                     cursor.execute(command)
                     connection.commit()
 
+
     except Exception as error:
         wasError = True
         connection.commit()
         global message
-        message = "Ошибка в транзакции. Отмена всех других операций транзакции. "
+        message = "Ошибка транзакции. Отмена всех других операций транзакции. "
         print("Error in transaction. Stop parsing. Reverting all other operations of a transaction. ", error)
         command = "delete from data.region_period_indicators where file_id = {0}".format(xfile_id)
         cursor.execute(command)
@@ -100,8 +100,7 @@ for i in range(len(sheets)):
     if wasError == True:
         break
 
-
-if checkNewData == True and wasError == False:
+if wasError == False and checkNewData == True:
     command = "UPDATE data.incoming_files SET status = true WHERE ID = {0}".format(xfile_id);
     cursor.execute(command)
     connection.commit()
